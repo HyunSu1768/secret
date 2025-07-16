@@ -92,8 +92,11 @@ function broadcastGameState() {
     ),
     lastEliminated: game.lastEliminated,
   };
-  Object.values(game.teams).forEach(team => {
-    if (team.ws) send(team.ws, state);
+  // 모든 WebSocket 연결(관전자 포함)에게 전송
+  wss.clients.forEach(client => {
+    if (client.readyState === 1) {
+      send(client, state);
+    }
   });
 }
 
