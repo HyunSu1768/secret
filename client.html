@@ -203,7 +203,13 @@
         return;
       }
       if (myTeam.choice === null) {
-        document.getElementById('status').innerText = '숫자 선택 (1 ~ ' + aliveTeams.length + ')';
+        // 아직 선택하지 않은 팀 목록
+        const notChosen = aliveTeams.filter(([name, t]) => t.choice === null).map(([name, t]) => name);
+        let waitMsg = '숫자 선택 (1 ~ ' + aliveTeams.length + ')';
+        if (notChosen.length > 0) {
+          waitMsg += '<br><span style="font-size:0.95em;color:#ffeb3b;">대기중: ' + notChosen.join(', ') + '</span>';
+        }
+        document.getElementById('status').innerHTML = waitMsg;
         for (let i = 1; i <= aliveTeams.length; ++i) {
           const btn = document.createElement('button');
           btn.innerText = i;
@@ -220,7 +226,13 @@
           choiceArea.appendChild(btn);
         }
       } else {
-        document.getElementById('status').innerText = '선택 완료! 다른 팀 대기중...';
+        // 아직 선택하지 않은 팀 목록
+        const notChosen = aliveTeams.filter(([name, t]) => t.choice === null).map(([name, t]) => name);
+        let waitMsg = '선택 완료! 다른 팀 대기중...';
+        if (notChosen.length > 0) {
+          waitMsg += '<br><span style="font-size:0.95em;color:#ffeb3b;">대기중: ' + notChosen.join(', ') + '</span>';
+        }
+        document.getElementById('status').innerHTML = waitMsg;
       }
     }
 

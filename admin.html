@@ -139,7 +139,7 @@
         eliminatedArea.style.display = 'none';
         eliminatedArea.innerHTML = '';
       }
-      // 상태 안내
+      // 상태 안내 + 대기중 팀 표시
       const allTeams = Object.entries(state.teams);
       let statusText = '';
       if (!state.started) {
@@ -148,6 +148,12 @@
         statusText = `🏆 <b>${aliveTeams[0][1].name}</b> 우승!`;
       } else if (allTeams.length > 0 && aliveTeams.length === 0) {
         statusText = '😮 <b>무승부! 모두 탈락!</b>';
+      } else {
+        // 선택 대기중인 팀 표시
+        const notChosen = aliveTeams.filter(([name, t]) => t.choice === null).map(([name, t]) => name);
+        if (notChosen.length > 0) {
+          statusText = '선택 대기중...<br><span style="font-size:0.95em;color:#ffeb3b;">대기중: ' + notChosen.join(', ') + '</span>';
+        }
       }
       document.getElementById('status').innerHTML = statusText;
       // 숫자 선택 버튼, 참가 입력 등은 표시하지 않음
