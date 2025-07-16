@@ -22,6 +22,7 @@ const TEAM_LIMIT = 10; // 최대 참가자 수
 // 참가 코드로 팀 참가
 app.post('/join', (req, res) => {
   const { name } = req.body;
+  if (game.started) return res.status(400).json({ error: '게임이 이미 시작되어 참가할 수 없습니다.' });
   if (Object.keys(game.teams).length >= TEAM_LIMIT) return res.status(400).json({ error: '방이 가득 찼습니다.' });
   if (Object.values(game.teams).some(team => team.name === name)) return res.status(400).json({ error: '이미 참가한 이름입니다.' });
   game.teams[name] = { name, ws: null, alive: true, choice: null };

@@ -116,7 +116,7 @@
 <body>
   <h2>비밀 눈치게임</h2>
   <div id="join-area">
-    <input id="name" placeholder="이름(팀명)" />
+    <input id="name" placeholder="예: 1조, 2조" pattern="[0-9]+조" title="숫자+조 형태로 입력 (예: 1조, 2조)" />
     <button onclick="join()">참가</button>
   </div>
   <div id="game-area" style="display:none">
@@ -135,13 +135,23 @@
   <script>
     let ws, myName;
     function join() {
-      const name = document.getElementById('name').value;
+      const name = document.getElementById('name').value.trim();
+      if (!/^\d+조$/.test(name)) {
+        showModal('팀명은 반드시 숫자+조 형태로 입력해야 합니다.<br>예: 1조, 2조', 2000);
+        return;
+      }
       fetch('https://secret-game.xquare.app/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name })
       }).then(r => {
-        if (!r.ok) return r.json().then(j => alert(j.error));
+        if (!r.ok) return r.json().then(j => {
+          if (j.error && j.error.includes('게임이 이미 시작')) {
+            showModal('게임이 이미 시작되어 참가할 수 없습니다.', 2000);
+          } else {
+            showModal(j.error || '참가 실패', 2000);
+          }
+        });
         myName = name;
         document.getElementById('join-area').style.display = 'none';
         document.getElementById('game-area').style.display = '';
@@ -274,6 +284,13 @@
         setTimeout(() => { modalBg.style.display = 'none'; }, 400);
       }, duration || 2000);
     }
+
+    // 새로고침 경고
+    window.addEventListener('beforeunload', function (e) {
+      e.preventDefault();
+      e.returnValue = '새로고침하면 게임에서 나가집니다! 정말 새로고침 하시겠습니까?';
+      return '새로고침하면 게임에서 나가집니다! 정말 새로고침 하시겠습니까?';
+    });
   </script>
 </body>
 </html>
