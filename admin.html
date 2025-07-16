@@ -85,6 +85,36 @@
     #modal-box {
       background:#232526; color:#fff; border-radius:18px; box-shadow:0 8px 32px #000a; padding:2.5em 2em; min-width:260px; max-width:90vw; text-align:center; font-size:1.3em; position:relative;
     }
+    .explosion {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 2000;
+    }
+    .particle {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      opacity: 0.85;
+      will-change: transform, opacity;
+    }
+    @keyframes explode {
+      0% { transform: scale(0.5) translate(0,0); opacity: 1; }
+      80% { opacity: 1; }
+      100% { transform: scale(1.2) translate(var(--tx), var(--ty)); opacity: 0; }
+    }
+    .shake {
+      animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-2px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
+      40%, 60% { transform: translate3d(8px, 0, 0); }
+    }
   </style>
 </head>
 <body>
@@ -185,6 +215,11 @@
       ).join('');
       modalContent.innerHTML = html;
       modalBg.style.display = 'flex';
+      // 폭발 파티클 생성
+      createExplosion(modalBg);
+      // 모달 진동 효과
+      modalContent.classList.add('shake');
+      setTimeout(() => modalContent.classList.remove('shake'), 600);
       modalBg.animate([
         { opacity: 0 },
         { opacity: 1 }
@@ -196,6 +231,31 @@
         ], { duration: 400 });
         setTimeout(() => { modalBg.style.display = 'none'; }, 400);
       }, 2000);
+    }
+
+    // 폭발 파티클 애니메이션 함수
+    function createExplosion(parent) {
+      // 기존 파티클 제거
+      const old = document.getElementById('explosion');
+      if (old) old.remove();
+      const explosion = document.createElement('div');
+      explosion.id = 'explosion';
+      explosion.className = 'explosion';
+      const colors = ['#ff5252', '#ffb347', '#fff', '#ffeb3b', '#ff1744', '#ff9100'];
+      const numParticles = 32;
+      for (let i = 0; i < numParticles; ++i) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const angle = (2 * Math.PI * i) / numParticles;
+        const dist = 120 + Math.random() * 40;
+        p.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+        p.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+        p.style.background = colors[Math.floor(Math.random() * colors.length)];
+        p.style.animation = `explode 0.9s cubic-bezier(.2,1.2,.4,1) forwards`;
+        explosion.appendChild(p);
+      }
+      parent.appendChild(explosion);
+      setTimeout(() => explosion.remove(), 1200);
     }
 
     // 긴장감 있는 우승 모달
