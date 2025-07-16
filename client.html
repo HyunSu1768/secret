@@ -126,6 +126,12 @@
     <div id="choice-area"></div>
     <div id="status"></div>
   </div>
+  <!-- 모달 영역 -->
+  <div id="modal-bg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+    <div id="modal-box" style="background:#232526; color:#fff; border-radius:18px; box-shadow:0 8px 32px #000a; padding:2.5em 2em; min-width:260px; max-width:90vw; text-align:center; font-size:1.3em; position:relative;">
+      <div id="modal-content"></div>
+    </div>
+  </div>
   <script>
     let ws, myName;
     function join() {
@@ -144,14 +150,15 @@
         ws.onmessage = (msg) => {
           const data = JSON.parse(msg.data);
           if (data.type === 'state') renderGame(data);
-          if (data.type === 'winner') alert('🎉 승자: ' + data.winner + ' 🎉');
-          if (data.type === 'draw') alert('😮 무승부! 모두 탈락!');
+          if (data.type === 'winner') showWinnerModal(data.winner);
+          if (data.type === 'draw') showModal('😮 <b>무승부! 모두 탈락!</b>', 2000);
         };
       });
     }
     function choose(num) {
       ws.send(JSON.stringify({ type: 'choose', name: myName, number: num }));
     }
+    let lastElimRound = 0;
     function renderGame(state) {
       document.getElementById('round').innerText = '라운드 ' + state.round;
       const aliveTeams = Object.entries(state.teams).filter(([_, t]) => t.alive);
@@ -159,7 +166,7 @@
       const myTeam = state.teams[myName];
       const choiceArea = document.getElementById('choice-area');
       choiceArea.innerHTML = '';
-      // 탈락 결과 표시
+      // 탈락 결과 표시 + 긴장감 연출
       const eliminatedArea = document.getElementById('eliminated-area');
       if (state.lastEliminated && state.lastEliminated.eliminated.length > 0) {
         eliminatedArea.style.display = '';
@@ -168,6 +175,11 @@
           state.lastEliminated.eliminated.map(e =>
             `숫자 <b>${e.number}</b> : <span style='color:#ff5252'>${e.teams.join(', ')}</span> 탈락`
           ).join('<br>');
+        // 긴장감 모달: 라운드가 갱신될 때만
+        if (lastElimRound !== state.lastEliminated.round) {
+          lastElimRound = state.lastEliminated.round;
+          showEliminationModal(state.lastEliminated);
+        }
       } else {
         eliminatedArea.style.display = 'none';
         eliminatedArea.innerHTML = '';
@@ -200,6 +212,67 @@
       } else {
         document.getElementById('status').innerText = '선택 완료! 다른 팀 대기중...';
       }
+    }
+
+    // 긴장감 있는 탈락 모달
+    function showEliminationModal(lastEliminated) {
+      const modalBg = document.getElementById('modal-bg');
+      const modalContent = document.getElementById('modal-content');
+      let html = `<div style='font-size:1.2em; margin-bottom:0.7em;'>😱 <b>탈락 결과 발표!</b></div>`;
+      html += lastEliminated.eliminated.map(e =>
+        `<div style='margin:0.5em 0;'><span style='font-size:1.1em;'>숫자 <b style="color:#ffeb3b; font-size:1.3em;">${e.number}</b></span><br><span style='color:#ff5252; font-size:1.1em;'>${e.teams.join(', ')}</span> <span style='color:#ff5252;'>탈락</span></div>`
+      ).join('');
+      modalContent.innerHTML = html;
+      modalBg.style.display = 'flex';
+      modalBg.animate([
+        { opacity: 0 },
+        { opacity: 1 }
+      ], { duration: 300 });
+      setTimeout(() => {
+        modalBg.animate([
+          { opacity: 1 },
+          { opacity: 0 }
+        ], { duration: 400 });
+        setTimeout(() => { modalBg.style.display = 'none'; }, 400);
+      }, 2000);
+    }
+
+    // 긴장감 있는 우승 모달
+    function showWinnerModal(winner) {
+      const modalBg = document.getElementById('modal-bg');
+      const modalContent = document.getElementById('modal-content');
+      modalContent.innerHTML = `<div style='font-size:2em; margin-bottom:0.5em; color:#ffeb3b; text-shadow:2px 2px 8px #000;'>🏆</div><div style='font-size:1.3em;'><b>${winner}</b><br>우승!</div>`;
+      modalBg.style.display = 'flex';
+      modalBg.animate([
+        { opacity: 0 },
+        { opacity: 1 }
+      ], { duration: 300 });
+      setTimeout(() => {
+        modalBg.animate([
+          { opacity: 1 },
+          { opacity: 0 }
+        ], { duration: 600 });
+        setTimeout(() => { modalBg.style.display = 'none'; }, 600);
+      }, 2000);
+    }
+
+    // 일반 모달 (무승부 등)
+    function showModal(html, duration) {
+      const modalBg = document.getElementById('modal-bg');
+      const modalContent = document.getElementById('modal-content');
+      modalContent.innerHTML = html;
+      modalBg.style.display = 'flex';
+      modalBg.animate([
+        { opacity: 0 },
+        { opacity: 1 }
+      ], { duration: 300 });
+      setTimeout(() => {
+        modalBg.animate([
+          { opacity: 1 },
+          { opacity: 0 }
+        ], { duration: 400 });
+        setTimeout(() => { modalBg.style.display = 'none'; }, 400);
+      }, duration || 2000);
     }
   </script>
 </body>
