@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>비밀 눈치게임 관리자 관전</title>
+  <title>비밀 눈치게임 (관리자 관전용)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
   <style>
@@ -62,29 +62,13 @@
       justify-content: center;
       margin-top: 0.5em;
     }
-    #eliminated-area {
-      background:rgba(255,255,255,0.07);
-      border-radius:12px;
-      padding:1em 1.5em;
-      margin:1em 0;
-      color:#ffb347;
-      font-size:1.1em;
-      text-align:center;
-      width:100%;
-    }
     @media (max-width: 500px) {
       #game-area {
         min-width: 90vw;
         padding: 1.2em 0.5em;
       }
     }
-    /* 모달 스타일 */
-    #modal-bg {
-      display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;
-    }
-    #modal-box {
-      background:#232526; color:#fff; border-radius:18px; box-shadow:0 8px 32px #000a; padding:2.5em 2em; min-width:260px; max-width:90vw; text-align:center; font-size:1.3em; position:relative;
-    }
+    /* 폭발 파티클 애니메이션 */
     .explosion {
       position: absolute;
       left: 50%;
@@ -106,6 +90,7 @@
       80% { opacity: 1; }
       100% { transform: scale(1.2) translate(var(--tx), var(--ty)); opacity: 0; }
     }
+    /* 모달 진동 효과 */
     .shake {
       animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
     }
@@ -118,40 +103,41 @@
   </style>
 </head>
 <body>
-  <h2>비밀 눈치게임 관리자 관전</h2>
+  <h2>비밀 눈치게임 <span style="font-size:0.7em; color:#ffb347;">(관리자 관전용)</span></h2>
   <div id="game-area">
     <h3 id="round"></h3>
     <div id="alive"></div>
-    <div id="eliminated-area" style="display:none"></div>
+    <div id="eliminated-area" style="display:none; background:rgba(255,255,255,0.07); border-radius:12px; padding:1em 1.5em; margin:1em 0; color:#ffb347; font-size:1.1em; text-align:center;"></div>
     <div id="choice-area"></div>
     <div id="status"></div>
   </div>
   <!-- 모달 영역 -->
-  <div id="modal-bg">
-    <div id="modal-box">
+  <div id="modal-bg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+    <div id="modal-box" style="background:#232526; color:#fff; border-radius:18px; box-shadow:0 8px 32px #000a; padding:2.5em 2em; min-width:260px; max-width:90vw; text-align:center; font-size:1.3em; position:relative;">
       <div id="modal-content"></div>
     </div>
   </div>
   <script>
     let ws;
-    let lastElimRound = 0;
-    function connect() {
+    // 관전자는 게임 상태만 구독, 참여 불가
+    function connectSpectator() {
       ws = new WebSocket('wss://secret-game.xquare.app');
-      ws.onopen = () => {};
+      ws.onopen = () => ws.send(JSON.stringify({ type: 'spectator' }));
       ws.onmessage = (msg) => {
         const data = JSON.parse(msg.data);
         if (data.type === 'state') renderGame(data);
         if (data.type === 'winner') showWinnerModal(data.winner);
         if (data.type === 'draw') showModal('😮 <b>무승부! 모두 탈락!</b>', 2000);
       };
-      ws.onclose = () => setTimeout(connect, 2000);
     }
-    connect();
-
+    connectSpectator();
+    let lastElimRound = 0;
     function renderGame(state) {
       document.getElementById('round').innerText = '라운드 ' + state.round;
       const aliveTeams = Object.entries(state.teams).filter(([_, t]) => t.alive);
       document.getElementById('alive').innerText = '생존 팀: ' + aliveTeams.map(([_, t]) => t.name).join(', ');
+      const choiceArea = document.getElementById('choice-area');
+      choiceArea.innerHTML = '';
       // 탈락 결과 표시 + 긴장감 연출
       const eliminatedArea = document.getElementById('eliminated-area');
       if (state.lastEliminated && state.lastEliminated.eliminated.length > 0) {
@@ -161,6 +147,7 @@
           state.lastEliminated.eliminated.map(e =>
             `숫자 <b>${e.number}</b> : <span style='color:#ff5252'>${e.teams.join(', ')}</span> 탈락`
           ).join('<br>');
+        // 긴장감 모달: 라운드가 갱신될 때만
         if (lastElimRound !== state.lastEliminated.round) {
           lastElimRound = state.lastEliminated.round;
           showEliminationModal(state.lastEliminated);
@@ -169,42 +156,17 @@
         eliminatedArea.style.display = 'none';
         eliminatedArea.innerHTML = '';
       }
-      // 상태 안내 + 대기중 팀 표시
-      const allTeams = Object.entries(state.teams);
-      let statusText = '';
       if (!state.started) {
-        statusText = '게임 대기중... (관리자가 시작하면 진행됩니다)';
-      } else if (allTeams.length > 0 && aliveTeams.length === 1) {
-        statusText = `🏆 <b>${aliveTeams[0][1].name}</b> 우승!`;
-      } else if (allTeams.length > 0 && aliveTeams.length === 0) {
-        statusText = '😮 <b>무승부! 모두 탈락!</b>';
-      } else {
-        // 선택 대기중인 팀 표시
-        const notChosen = aliveTeams.filter(([name, t]) => t.choice === null).map(([name, t]) => name);
-        if (notChosen.length > 0) {
-          statusText = '선택 대기중...<br><span style="font-size:0.95em;color:#ffeb3b;">대기중: ' + notChosen.join(', ') + '</span>';
-        }
+        document.getElementById('status').innerText = '게임 대기중... (관리자가 시작하면 진행됩니다)';
+        return;
       }
-      document.getElementById('status').innerHTML = statusText;
-      // 숫자 선택 버튼, 참가 입력 등은 표시하지 않음
-      const choiceArea = document.getElementById('choice-area');
-      choiceArea.innerHTML = '';
-      // 각 팀의 선택 현황 테이블 표시
-      if (allTeams.length > 0) {
-        let table = `<table style='width:100%;margin-top:1em;border-collapse:collapse;font-size:1.1em;'>`;
-        table += `<tr><th style='color:#ffeb3b;'>팀명</th><th>상태</th><th>선택 숫자</th></tr>`;
-        allTeams.forEach(([name, t]) => {
-          table += `<tr>`;
-          table += `<td style='${t.alive ? 'color:#fff;font-weight:bold;' : 'color:#ff5252;text-decoration:line-through;opacity:0.7;'}'>${name}</td>`;
-          table += `<td>${t.alive ? '생존' : '탈락'}</td>`;
-          table += `<td style='${t.choice !== null ? 'color:#43cea2;font-weight:bold;' : 'color:#aaa;font-style:italic;'}'>${t.choice !== null ? t.choice : '-'}</td>`;
-          table += `</tr>`;
-        });
-        table += `</table>`;
-        choiceArea.innerHTML = table;
-      }
+      // 관전자는 팀별 선택 현황만 보여줌
+      const choices = Object.entries(state.teams).map(([name, t]) => {
+        if (!t.alive) return '';
+        return `<span style="margin-right:1em;">${t.name}: ${t.choice === null ? '<span style=\'color:#ffeb3b\'>미선택</span>' : t.choice}</span>`;
+      }).join('');
+      document.getElementById('status').innerHTML = choices;
     }
-
     // 긴장감 있는 탈락 모달
     function showEliminationModal(lastEliminated) {
       const modalBg = document.getElementById('modal-bg');
@@ -215,9 +177,7 @@
       ).join('');
       modalContent.innerHTML = html;
       modalBg.style.display = 'flex';
-      // 폭발 파티클 생성
       createExplosion(modalBg);
-      // 모달 진동 효과
       modalContent.classList.add('shake');
       setTimeout(() => modalContent.classList.remove('shake'), 600);
       modalBg.animate([
@@ -232,10 +192,8 @@
         setTimeout(() => { modalBg.style.display = 'none'; }, 400);
       }, 2000);
     }
-
     // 폭발 파티클 애니메이션 함수
     function createExplosion(parent) {
-      // 기존 파티클 제거
       const old = document.getElementById('explosion');
       if (old) old.remove();
       const explosion = document.createElement('div');
@@ -257,7 +215,6 @@
       parent.appendChild(explosion);
       setTimeout(() => explosion.remove(), 1200);
     }
-
     // 긴장감 있는 우승 모달
     function showWinnerModal(winner) {
       const modalBg = document.getElementById('modal-bg');
@@ -276,7 +233,6 @@
         setTimeout(() => { modalBg.style.display = 'none'; }, 600);
       }, 2000);
     }
-
     // 일반 모달 (무승부 등)
     function showModal(html, duration) {
       const modalBg = document.getElementById('modal-bg');
@@ -295,6 +251,12 @@
         setTimeout(() => { modalBg.style.display = 'none'; }, 400);
       }, duration || 2000);
     }
+    // 새로고침 경고 (관전자는 나가도 영향 없음)
+    // window.addEventListener('beforeunload', function (e) {
+    //   e.preventDefault();
+    //   e.returnValue = '새로고침하면 페이지가 새로고침됩니다!';
+    //   return '새로고침하면 페이지가 새로고침됩니다!';
+    // });
   </script>
 </body>
 </html> 
