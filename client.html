@@ -131,7 +131,7 @@
     function join() {
       const teamCode = document.getElementById('teamCode').value;
       const name = document.getElementById('name').value;
-      fetch('http://localhost:4000/join', {
+      fetch('https://secret-game.xquare.app/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teamCode, name })
@@ -140,7 +140,7 @@
         myTeamCode = teamCode;
         document.getElementById('join-area').style.display = 'none';
         document.getElementById('game-area').style.display = '';
-        ws = new WebSocket('ws://localhost:4000');
+        ws = new WebSocket('wss://secret-game.xquare.app');
         ws.onopen = () => ws.send(JSON.stringify({ type: 'register', teamCode }));
         ws.onmessage = (msg) => {
           const data = JSON.parse(msg.data);
