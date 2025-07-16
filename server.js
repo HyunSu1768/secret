@@ -17,7 +17,7 @@ let game = {
   lastEliminated: null, // { round, eliminated: [{number, teams: [name, ...]}] }
 };
 
-const TEAM_LIMIT = 10; // 최대 참가자 수
+const TEAM_LIMIT = 100; // 최대 참가자 수
 
 // 참가 코드로 팀 참가
 app.post('/join', (req, res) => {
