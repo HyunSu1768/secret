@@ -119,6 +119,13 @@ function checkAllChosen() {
       const names = choices[minDup];
       names.forEach(name => { game.teams[name].alive = false; });
       eliminated.push({ number: minDup, teams: names });
+    } else {
+      // 모든 팀이 서로 다른 숫자를 골랐다면, 가장 큰 숫자를 고른 팀이 탈락
+      const allNumbers = Object.keys(choices).map(Number);
+      const maxNumber = Math.max(...allNumbers);
+      const names = choices[maxNumber];
+      names.forEach(name => { game.teams[name].alive = false; });
+      eliminated.push({ number: maxNumber, teams: names });
     }
     // 라운드 탈락 결과 저장
     if (eliminated.length > 0) {
