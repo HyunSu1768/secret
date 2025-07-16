@@ -5,6 +5,7 @@
   <title>비밀 눈치게임 (관리자 관전용)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
   <style>
     body {
       font-family: 'Jua', sans-serif;
@@ -17,23 +18,21 @@
       align-items: center;
       justify-content: flex-start;
     }
-    h2, h3 {
-      margin-top: 1.5em;
-      margin-bottom: 0.5em;
-      letter-spacing: 2px;
-      text-shadow: 2px 2px 8px #0008;
-    }
-    #game-area {
-      background: rgba(30, 30, 40, 0.95);
-      border-radius: 18px;
-      box-shadow: 0 8px 32px 0 #0006;
-      padding: 2em 2.5em 2em 2.5em;
+    .container {
+      width: 100%;
+      max-width: 600px;
       margin-top: 2em;
-      min-width: 320px;
-      max-width: 90vw;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      gap: 1.5em;
+    }
+    .card {
+      background: rgba(30, 30, 40, 0.97);
+      border-radius: 18px;
+      box-shadow: 0 8px 32px 0 #0007;
+      padding: 2em 2.5em 2em 2.5em;
+      display: flex;
+      flex-direction: column;
       gap: 1.2em;
       animation: fadein 1s;
     }
@@ -41,32 +40,79 @@
       from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: none; }
     }
-    #alive {
-      font-size: 1.1em;
+    .section-title {
+      font-size: 1.3em;
       margin-bottom: 0.5em;
+      letter-spacing: 2px;
+      text-shadow: 2px 2px 8px #0008;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+    .divider {
+      border: none;
+      border-top: 1.5px solid #444;
+      margin: 1em 0 0.5em 0;
+    }
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 1em;
+      flex-wrap: wrap;
+      font-size: 1.1em;
+    }
+    .info-label {
       color: #ffeb3b;
-      text-shadow: 1px 1px 6px #000a;
+      font-weight: bold;
+      margin-right: 0.5em;
     }
-    #status {
-      font-size: 1.2em;
-      margin-top: 1em;
-      min-height: 2em;
-      color: #fff;
-      text-shadow: 1px 1px 6px #000a;
-      letter-spacing: 1px;
-    }
-    #choice-area {
+    .team-list {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.7em;
-      justify-content: center;
-      margin-top: 0.5em;
+      gap: 0.5em 1em;
+      font-size: 1.1em;
     }
-    @media (max-width: 500px) {
-      #game-area {
-        min-width: 90vw;
-        padding: 1.2em 0.5em;
-      }
+    .team-badge {
+      background: #232526;
+      border-radius: 8px;
+      padding: 0.3em 0.9em;
+      color: #ffeb3b;
+      box-shadow: 0 2px 8px #0003;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 0.3em;
+    }
+    .eliminated-area {
+      background: rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 1em 1.5em;
+      color: #ffb347;
+      font-size: 1.1em;
+      text-align: center;
+      margin: 1em 0 0 0;
+    }
+    .event-log {
+      max-height: 180px;
+      overflow-y: auto;
+      font-size: 1em;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      padding: 1em 1em 0.5em 1em;
+      color: #fff;
+    }
+    .event-item {
+      margin-bottom: 0.7em;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7em;
+    }
+    .event-icon {
+      font-size: 1.2em;
+      margin-top: 0.1em;
+    }
+    @media (max-width: 600px) {
+      .container, .card { max-width: 98vw; padding: 1.2em 0.5em; }
     }
     /* 폭발 파티클 애니메이션 */
     .explosion {
@@ -90,10 +136,7 @@
       80% { opacity: 1; }
       100% { transform: scale(1.2) translate(var(--tx), var(--ty)); opacity: 0; }
     }
-    /* 모달 진동 효과 */
-    .shake {
-      animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-    }
+    .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
     @keyframes shake {
       10%, 90% { transform: translate3d(-2px, 0, 0); }
       20%, 80% { transform: translate3d(4px, 0, 0); }
@@ -103,13 +146,32 @@
   </style>
 </head>
 <body>
-  <h2>비밀 눈치게임 <span style="font-size:0.7em; color:#ffb347;">(관리자 관전용)</span></h2>
-  <div id="game-area">
-    <h3 id="round"></h3>
-    <div id="alive"></div>
-    <div id="eliminated-area" style="display:none; background:rgba(255,255,255,0.07); border-radius:12px; padding:1em 1.5em; margin:1em 0; color:#ffb347; font-size:1.1em; text-align:center;"></div>
-    <div id="choice-area"></div>
-    <div id="status"></div>
+  <h2 style="margin-top:1.2em; font-size:2.1em; letter-spacing:2px; text-shadow:2px 2px 12px #000a;">
+    <i class="fa-solid fa-eye"></i> 비밀 눈치게임 <span style="font-size:0.7em; color:#ffb347;">(관리자 관전용)</span>
+  </h2>
+  <div class="container">
+    <div class="card">
+      <div class="section-title"><i class="fa-solid fa-gauge"></i> 게임 현황</div>
+      <div class="info-row"><span class="info-label"><i class="fa-solid fa-arrow-rotate-right"></i> 라운드</span> <span id="round"></span></div>
+      <div class="info-row"><span class="info-label"><i class="fa-solid fa-users"></i> 생존 팀</span> <span id="alive"></span></div>
+      <div class="info-row"><span class="info-label"><i class="fa-solid fa-circle-info"></i> 상태</span> <span id="status"></span></div>
+      <hr class="divider" />
+      <div class="section-title" style="font-size:1.1em;"><i class="fa-solid fa-skull-crossbones"></i> 탈락/결과</div>
+      <div id="eliminated-area" class="eliminated-area" style="display:none;"></div>
+    </div>
+    <div class="card">
+      <div class="section-title"><i class="fa-solid fa-list"></i> 이벤트 로그</div>
+      <div id="event-log" class="event-log"></div>
+    </div>
+    <div class="card" style="background:rgba(255,255,255,0.03); color:#ffeb3b;">
+      <div class="section-title"><i class="fa-solid fa-circle-question"></i> 게임 설명</div>
+      <ul style="margin:0 0 0 1.2em; padding:0; color:#ffeb3b; font-size:1em;">
+        <li>각 팀은 라운드마다 1~생존팀 수 중 하나의 숫자를 선택합니다.</li>
+        <li>같은 숫자를 고른 팀이 있으면, 그 중 가장 작은 숫자를 고른 팀이 탈락합니다.</li>
+        <li>1팀만 남으면 우승, 모두 탈락하면 무승부입니다.</li>
+        <li>관리자는 실시간으로 게임 현황과 결과만 볼 수 있습니다.</li>
+      </ul>
+    </div>
   </div>
   <!-- 모달 영역 -->
   <div id="modal-bg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
@@ -119,7 +181,7 @@
   </div>
   <script>
     let ws;
-    // 관전자는 게임 상태만 구독, 참여 불가
+    let eventHistory = [];
     function connectSpectator() {
       ws = new WebSocket('wss://secret-game.xquare.app');
       ws.onopen = () => ws.send(JSON.stringify({ type: 'spectator' }));
@@ -133,45 +195,43 @@
     connectSpectator();
     let lastElimRound = 0;
     function renderGame(state) {
-      document.getElementById('round').innerText = '라운드 ' + state.round;
+      document.getElementById('round').innerText = state.round;
       const aliveTeams = Object.entries(state.teams).filter(([_, t]) => t.alive);
-      document.getElementById('alive').innerText = '생존 팀: ' + aliveTeams.map(([_, t]) => t.name).join(', ');
-      const choiceArea = document.getElementById('choice-area');
-      choiceArea.innerHTML = '';
-      // 탈락 결과 표시 + 긴장감 연출
+      document.getElementById('alive').innerHTML = aliveTeams.length > 0
+        ? aliveTeams.map(([_, t]) => `<span class="team-badge"><i class="fa-solid fa-user"></i> ${t.name}</span>`).join(' ')
+        : '<span style="color:#ff5252;">없음</span>';
+      // 상태
+      let statusText = '';
+      if (!state.started) statusText = '게임 대기중... (관리자가 시작하면 진행됩니다)';
+      else statusText = `진행중 (${aliveTeams.length}팀 생존)`;
+      document.getElementById('status').innerHTML = statusText;
+      // 탈락 결과 표시
       const eliminatedArea = document.getElementById('eliminated-area');
-      const statusArea = document.getElementById('status');
       if (state.lastEliminated && state.lastEliminated.eliminated.length > 0) {
         eliminatedArea.style.display = '';
-        // 각 팀의 선택 숫자 표시
-        let teamChoicesHtml = '<div style="margin-bottom:0.7em;"><b>팀별 선택 숫자</b><br>' +
-          Object.entries(state.teams)
-            .map(([name, t]) => `<span style='margin-right:1em;'>${t.name}: <b style='color:#43cea2'>${(t.choice !== null && t.choice !== undefined) ? t.choice : '-'}</b></span>`)
-            .join('') + '</div>';
         eliminatedArea.innerHTML =
-          teamChoicesHtml +
           `<b>지난 라운드 결과</b><br>` +
           state.lastEliminated.eliminated.map(e =>
-            `숫자 <b>${e.number}</b> : <span style='color:#ff5252'>${e.teams.join(', ')}</span> 탈락`
+            `<span style='font-size:1.1em;'><i class="fa-solid fa-skull-crossbones"></i> 숫자 <b>${e.number}</b> : <span style='color:#ff5252'>${e.teams.join(', ')}</span> 탈락</span>`
           ).join('<br>');
-        // 긴장감 모달: 라운드가 갱신될 때만
-        if (lastElimRound !== state.lastEliminated.round) {
-          lastElimRound = state.lastEliminated.round;
-          showEliminationModal(state.lastEliminated);
+        // 이벤트 로그에 추가
+        if (!eventHistory.length || eventHistory[eventHistory.length-1].round !== state.lastEliminated.round) {
+          eventHistory.push({
+            round: state.lastEliminated.round,
+            html: state.lastEliminated.eliminated.map(e =>
+              `<span class='event-item'><span class='event-icon'><i class="fa-solid fa-skull-crossbones"></i></span> <b>${e.teams.join(', ')}</b> 팀이 <b>${e.number}</b>번으로 탈락</span>`
+            ).join('')
+          });
         }
-        // 라운드가 끝난 후에는 status 영역 비움
-        statusArea.innerHTML = '';
       } else {
         eliminatedArea.style.display = 'none';
         eliminatedArea.innerHTML = '';
-        // 라운드 진행 중에는 선택 현황도 숨김
-        statusArea.innerHTML = '';
       }
-      if (!state.started) {
-        statusArea.innerText = '게임 대기중... (관리자가 시작하면 진행됩니다)';
-        return;
-      }
-      // 관전자는 라운드 중에는 팀별 선택 현황도 보여주지 않음
+      // 이벤트 로그 렌더링
+      const eventLog = document.getElementById('event-log');
+      eventLog.innerHTML = eventHistory.length
+        ? eventHistory.map(e => `<div><b>라운드 ${e.round}</b><br>${e.html}</div>`).reverse().join('<hr class="divider" style="margin:0.7em 0;">')
+        : '<span style="color:#bbb;">아직 이벤트가 없습니다.</span>';
     }
     // 긴장감 있는 탈락 모달
     function showEliminationModal(lastEliminated) {
@@ -257,12 +317,6 @@
         setTimeout(() => { modalBg.style.display = 'none'; }, 400);
       }, duration || 2000);
     }
-    // 새로고침 경고 (관전자는 나가도 영향 없음)
-    // window.addEventListener('beforeunload', function (e) {
-    //   e.preventDefault();
-    //   e.returnValue = '새로고침하면 페이지가 새로고침됩니다!';
-    //   return '새로고침하면 페이지가 새로고침됩니다!';
-    // });
   </script>
 </body>
 </html> 
