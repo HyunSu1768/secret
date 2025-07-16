@@ -20,10 +20,10 @@ const TEAM_LIMIT = 10; // 최대 참가자 수
 
 // 참가 코드로 팀 참가
 app.post('/join', (req, res) => {
-  const { teamCode, name } = req.body;
+  const { name } = req.body;
   if (Object.keys(game.teams).length >= TEAM_LIMIT) return res.status(400).json({ error: '방이 가득 찼습니다.' });
-  if (game.teams[teamCode]) return res.status(400).json({ error: '이미 참가한 코드입니다.' });
-  game.teams[teamCode] = { name, ws: null, alive: true, choice: null };
+  if (Object.values(game.teams).some(team => team.name === name)) return res.status(400).json({ error: '이미 참가한 이름입니다.' });
+  game.teams[name] = { name, ws: null, alive: true, choice: null };
   res.json({ success: true });
 });
 
@@ -35,6 +35,17 @@ app.post('/start', (req, res) => {
   res.json({ success: true });
 });
 
+// 게임 상태 초기화 (관리자용)
+app.post('/reset', (req, res) => {
+  game = {
+    started: false,
+    teams: {},
+    round: 1,
+    choices: {},
+  };
+  res.json({ success: true });
+});
+
 // WebSocket 연결
 const server = app.listen(PORT, () => console.log(`Server on ${PORT}`));
 const wss = new WebSocketServer({ server });
@@ -43,17 +54,17 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (msg) => {
     const data = JSON.parse(msg);
     if (data.type === 'register') {
-      const { teamCode } = data;
-      if (game.teams[teamCode]) {
-        game.teams[teamCode].ws = ws;
-        send(ws, { type: 'registered', teamCode });
+      const { name } = data;
+      if (game.teams[name]) {
+        game.teams[name].ws = ws;
+        send(ws, { type: 'registered', name });
         broadcastGameState();
       }
     }
     if (data.type === 'choose') {
-      const { teamCode, number } = data;
-      if (game.teams[teamCode] && game.teams[teamCode].alive && game.started) {
-        game.teams[teamCode].choice = number;
+      const { name, number } = data;
+      if (game.teams[name] && game.teams[name].alive && game.started) {
+        game.teams[name].choice = number;
         broadcastGameState();
         checkAllChosen();
       }
