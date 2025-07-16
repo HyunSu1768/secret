@@ -11,9 +11,10 @@ const PORT = 4000;
 // 게임 상태
 let game = {
   started: false,
-  teams: {}, // { teamCode: { name, ws, alive, choice } }
+  teams: {}, // { name: { name, ws, alive, choice } }
   round: 1,
-  choices: {}, // { number: [teamCode, ...] }
+  choices: {}, // { number: [name, ...] }
+  lastEliminated: null, // { round, eliminated: [{number, teams: [name, ...]}] }
 };
 
 const TEAM_LIMIT = 10; // 최대 참가자 수
@@ -42,6 +43,7 @@ app.post('/reset', (req, res) => {
     teams: {},
     round: 1,
     choices: {},
+    lastEliminated: null,
   };
   res.json({ success: true });
 });
@@ -87,6 +89,7 @@ function broadcastGameState() {
     teams: Object.fromEntries(
       Object.entries(game.teams).map(([k, v]) => [k, { name: v.name, alive: v.alive, choice: v.choice }])
     ),
+    lastEliminated: game.lastEliminated,
   };
   Object.values(game.teams).forEach(team => {
     if (team.ws) send(team.ws, state);
@@ -98,18 +101,26 @@ function checkAllChosen() {
   if (aliveTeams.every(([_, t]) => t.choice !== null)) {
     // 결과 처리
     const choices = {};
-    aliveTeams.forEach(([code, t]) => {
+    aliveTeams.forEach(([name, t]) => {
       if (!choices[t.choice]) choices[t.choice] = [];
-      choices[t.choice].push(code);
+      choices[t.choice].push(name);
     });
-    // 중복 선택한 팀 탈락
-    Object.entries(choices).forEach(([num, codes]) => {
-      if (codes.length > 1) {
-        codes.forEach(code => { game.teams[code].alive = false; });
+    // 중복 선택한 팀 탈락 및 기록
+    const eliminated = [];
+    Object.entries(choices).forEach(([num, names]) => {
+      if (names.length > 1) {
+        names.forEach(name => { game.teams[name].alive = false; });
+        eliminated.push({ number: Number(num), teams: names });
       }
     });
+    // 라운드 탈락 결과 저장
+    if (eliminated.length > 0) {
+      game.lastEliminated = { round: game.round, eliminated };
+    } else {
+      game.lastEliminated = null;
+    }
     // 다음 라운드 준비
-    aliveTeams.forEach(([code, t]) => { t.choice = null; });
+    aliveTeams.forEach(([name, t]) => { t.choice = null; });
     game.round += 1;
     broadcastGameState();
 
@@ -132,6 +143,7 @@ function checkAllChosen() {
 function resetGame() {
   game.started = false;
   game.round = 1;
+  game.lastEliminated = null;
   Object.values(game.teams).forEach(t => {
     t.alive = true;
     t.choice = null;

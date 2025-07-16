@@ -122,6 +122,7 @@
   <div id="game-area" style="display:none">
     <h3 id="round"></h3>
     <div id="alive"></div>
+    <div id="eliminated-area" style="display:none; background:rgba(255,255,255,0.07); border-radius:12px; padding:1em 1.5em; margin:1em 0; color:#ffb347; font-size:1.1em; text-align:center;"></div>
     <div id="choice-area"></div>
     <div id="status"></div>
   </div>
@@ -158,6 +159,19 @@
       const myTeam = state.teams[myName];
       const choiceArea = document.getElementById('choice-area');
       choiceArea.innerHTML = '';
+      // 탈락 결과 표시
+      const eliminatedArea = document.getElementById('eliminated-area');
+      if (state.lastEliminated && state.lastEliminated.eliminated.length > 0) {
+        eliminatedArea.style.display = '';
+        eliminatedArea.innerHTML =
+          `<b>지난 라운드 결과</b><br>` +
+          state.lastEliminated.eliminated.map(e =>
+            `숫자 <b>${e.number}</b> : <span style='color:#ff5252'>${e.teams.join(', ')}</span> 탈락`
+          ).join('<br>');
+      } else {
+        eliminatedArea.style.display = 'none';
+        eliminatedArea.innerHTML = '';
+      }
       if (!state.started) {
         document.getElementById('status').innerText = '게임 대기중... (관리자가 시작하면 진행됩니다)';
         return;
