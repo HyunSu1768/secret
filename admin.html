@@ -146,7 +146,7 @@
         // 각 팀의 선택 숫자 표시
         let teamChoicesHtml = '<div style="margin-bottom:0.7em;"><b>팀별 선택 숫자</b><br>' +
           Object.entries(state.teams)
-            .map(([name, t]) => `<span style='margin-right:1em;'>${t.name}: <b style='color:#43cea2'>${t.choice !== null ? t.choice : '-'}</b></span>`)
+            .map(([name, t]) => `<span style='margin-right:1em;'>${t.name}: <b style='color:#43cea2'>${(t.choice !== null && t.choice !== undefined) ? t.choice : '-'}</b></span>`)
             .join('') + '</div>';
         eliminatedArea.innerHTML =
           teamChoicesHtml +
