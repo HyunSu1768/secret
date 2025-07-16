@@ -106,14 +106,17 @@ function checkAllChosen() {
       if (!choices[t.choice]) choices[t.choice] = [];
       choices[t.choice].push(name);
     });
-    // 중복 선택한 팀 탈락 및 기록
-    const eliminated = [];
-    Object.entries(choices).forEach(([num, names]) => {
-      if (names.length > 1) {
-        names.forEach(name => { game.teams[name].alive = false; });
-        eliminated.push({ number: Number(num), teams: names });
-      }
-    });
+    // 중복 선택 숫자 중 가장 작은 숫자만 탈락
+    const duplicatedNumbers = Object.entries(choices)
+      .filter(([num, names]) => names.length > 1)
+      .map(([num, names]) => Number(num));
+    let eliminated = [];
+    if (duplicatedNumbers.length > 0) {
+      const minDup = Math.min(...duplicatedNumbers);
+      const names = choices[minDup];
+      names.forEach(name => { game.teams[name].alive = false; });
+      eliminated.push({ number: minDup, teams: names });
+    }
     // 라운드 탈락 결과 저장
     if (eliminated.length > 0) {
       game.lastEliminated = { round: game.round, eliminated };
