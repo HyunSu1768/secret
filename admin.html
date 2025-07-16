@@ -140,9 +140,16 @@
       choiceArea.innerHTML = '';
       // 탈락 결과 표시 + 긴장감 연출
       const eliminatedArea = document.getElementById('eliminated-area');
+      const statusArea = document.getElementById('status');
       if (state.lastEliminated && state.lastEliminated.eliminated.length > 0) {
         eliminatedArea.style.display = '';
+        // 각 팀의 선택 숫자 표시
+        let teamChoicesHtml = '<div style="margin-bottom:0.7em;"><b>팀별 선택 숫자</b><br>' +
+          Object.entries(state.teams)
+            .map(([name, t]) => `<span style='margin-right:1em;'>${t.name}: <b style='color:#43cea2'>${t.choice !== null ? t.choice : '-'}</b></span>`)
+            .join('') + '</div>';
         eliminatedArea.innerHTML =
+          teamChoicesHtml +
           `<b>지난 라운드 결과</b><br>` +
           state.lastEliminated.eliminated.map(e =>
             `숫자 <b>${e.number}</b> : <span style='color:#ff5252'>${e.teams.join(', ')}</span> 탈락`
@@ -152,20 +159,19 @@
           lastElimRound = state.lastEliminated.round;
           showEliminationModal(state.lastEliminated);
         }
+        // 라운드가 끝난 후에는 status 영역 비움
+        statusArea.innerHTML = '';
       } else {
         eliminatedArea.style.display = 'none';
         eliminatedArea.innerHTML = '';
+        // 라운드 진행 중에는 선택 현황도 숨김
+        statusArea.innerHTML = '';
       }
       if (!state.started) {
-        document.getElementById('status').innerText = '게임 대기중... (관리자가 시작하면 진행됩니다)';
+        statusArea.innerText = '게임 대기중... (관리자가 시작하면 진행됩니다)';
         return;
       }
-      // 관전자는 팀별 선택 현황만 보여줌
-      const choices = Object.entries(state.teams).map(([name, t]) => {
-        if (!t.alive) return '';
-        return `<span style="margin-right:1em;">${t.name}: ${t.choice === null ? '<span style=\'color:#ffeb3b\'>미선택</span>' : t.choice}</span>`;
-      }).join('');
-      document.getElementById('status').innerHTML = choices;
+      // 관전자는 라운드 중에는 팀별 선택 현황도 보여주지 않음
     }
     // 긴장감 있는 탈락 모달
     function showEliminationModal(lastEliminated) {
