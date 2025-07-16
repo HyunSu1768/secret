@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>비밀 눈치게임 관리자</title>
+  <title>비밀 눈치게임 관리자 관전</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
   <style>
@@ -15,21 +15,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
     }
-    h2 {
+    h2, h3 {
       margin-top: 1.5em;
       margin-bottom: 0.5em;
       letter-spacing: 2px;
       text-shadow: 2px 2px 8px #0008;
     }
-    #dashboard {
+    #game-area {
       background: rgba(30, 30, 40, 0.95);
       border-radius: 18px;
       box-shadow: 0 8px 32px 0 #0006;
       padding: 2em 2.5em 2em 2.5em;
       margin-top: 2em;
-      min-width: 340px;
-      max-width: 95vw;
+      min-width: 320px;
+      max-width: 90vw;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -40,40 +41,26 @@
       from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: none; }
     }
-    .team-list {
-      width: 100%;
-      margin: 0.5em 0 1em 0;
-      border-collapse: collapse;
+    #alive {
       font-size: 1.1em;
-    }
-    .team-list th, .team-list td {
-      padding: 0.4em 0.7em;
-      text-align: center;
-    }
-    .team-list th {
-      background: #333a;
+      margin-bottom: 0.5em;
       color: #ffeb3b;
+      text-shadow: 1px 1px 6px #000a;
     }
-    .team-list td {
-      background: #222a;
-      border-bottom: 1px solid #4446;
-    }
-    .dead {
-      color: #ff5252;
-      text-decoration: line-through;
-      opacity: 0.7;
-    }
-    .alive {
+    #status {
+      font-size: 1.2em;
+      margin-top: 1em;
+      min-height: 2em;
       color: #fff;
-      font-weight: bold;
+      text-shadow: 1px 1px 6px #000a;
+      letter-spacing: 1px;
     }
-    .chosen {
-      color: #43cea2;
-      font-weight: bold;
-    }
-    .not-chosen {
-      color: #aaa;
-      font-style: italic;
+    #choice-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7em;
+      justify-content: center;
+      margin-top: 0.5em;
     }
     #eliminated-area {
       background:rgba(255,255,255,0.07);
@@ -85,82 +72,57 @@
       text-align:center;
       width:100%;
     }
-    #winner-area {
-      font-size:1.3em;
-      color:#ffeb3b;
-      text-shadow:2px 2px 8px #000;
-      margin:1em 0 0.5em 0;
-      text-align:center;
-    }
-    #draw-area {
-      font-size:1.2em;
-      color:#ff5252;
-      margin:1em 0 0.5em 0;
-      text-align:center;
-    }
     @media (max-width: 500px) {
-      #dashboard {
-        min-width: 95vw;
+      #game-area {
+        min-width: 90vw;
         padding: 1.2em 0.5em;
       }
-      .team-list th, .team-list td {
-        font-size: 1em;
-        padding: 0.3em 0.2em;
-      }
+    }
+    /* 모달 스타일 */
+    #modal-bg {
+      display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;
+    }
+    #modal-box {
+      background:#232526; color:#fff; border-radius:18px; box-shadow:0 8px 32px #000a; padding:2.5em 2em; min-width:260px; max-width:90vw; text-align:center; font-size:1.3em; position:relative;
     }
   </style>
 </head>
 <body>
-  <h2>비밀 눈치게임 관리자 대시보드</h2>
-  <div id="dashboard">
-    <div id="round"></div>
+  <h2>비밀 눈치게임 관리자 관전</h2>
+  <div id="game-area">
+    <h3 id="round"></h3>
     <div id="alive"></div>
-    <table class="team-list" id="team-table">
-      <thead>
-        <tr><th>팀명</th><th>상태</th><th>선택 숫자</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
     <div id="eliminated-area" style="display:none"></div>
-    <div id="winner-area" style="display:none"></div>
-    <div id="draw-area" style="display:none"></div>
+    <div id="choice-area"></div>
+    <div id="status"></div>
+  </div>
+  <!-- 모달 영역 -->
+  <div id="modal-bg">
+    <div id="modal-box">
+      <div id="modal-content"></div>
+    </div>
   </div>
   <script>
     let ws;
-    let winnerAnnounced = false;
-    let drawAnnounced = false;
+    let lastElimRound = 0;
     function connect() {
       ws = new WebSocket('wss://secret-game.xquare.app');
-      ws.onopen = () => {
-        // 관리자는 이름 없이 관전만
-      };
+      ws.onopen = () => {};
       ws.onmessage = (msg) => {
         const data = JSON.parse(msg.data);
-        if (data.type === 'state') renderDashboard(data);
-        // 우승/무승부는 state로만 처리
+        if (data.type === 'state') renderGame(data);
+        if (data.type === 'winner') showWinnerModal(data.winner);
+        if (data.type === 'draw') showModal('😮 <b>무승부! 모두 탈락!</b>', 2000);
       };
       ws.onclose = () => setTimeout(connect, 2000);
     }
     connect();
 
-    function renderDashboard(state) {
-      document.getElementById('round').innerHTML = `<b>라운드:</b> ${state.round}`;
-      const teams = Object.values(state.teams);
-      const aliveTeams = teams.filter(t => t.alive);
-      document.getElementById('alive').innerHTML = `<b>생존 팀:</b> ${aliveTeams.map(t => t.name).join(', ') || '없음'}`;
-      // 팀 테이블
-      const tbody = document.getElementById('team-table').querySelector('tbody');
-      tbody.innerHTML = '';
-      teams.forEach(t => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="${t.alive ? 'alive' : 'dead'}">${t.name}</td>
-          <td>${t.alive ? '생존' : '탈락'}</td>
-          <td class="${t.choice !== null ? 'chosen' : 'not-chosen'}">${t.choice !== null ? t.choice : '-'}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-      // 탈락 결과
+    function renderGame(state) {
+      document.getElementById('round').innerText = '라운드 ' + state.round;
+      const aliveTeams = Object.entries(state.teams).filter(([_, t]) => t.alive);
+      document.getElementById('alive').innerText = '생존 팀: ' + aliveTeams.map(([_, t]) => t.name).join(', ');
+      // 탈락 결과 표시 + 긴장감 연출
       const eliminatedArea = document.getElementById('eliminated-area');
       if (state.lastEliminated && state.lastEliminated.eliminated.length > 0) {
         eliminatedArea.style.display = '';
@@ -169,26 +131,103 @@
           state.lastEliminated.eliminated.map(e =>
             `숫자 <b>${e.number}</b> : <span style='color:#ff5252'>${e.teams.join(', ')}</span> 탈락`
           ).join('<br>');
+        if (lastElimRound !== state.lastEliminated.round) {
+          lastElimRound = state.lastEliminated.round;
+          showEliminationModal(state.lastEliminated);
+        }
       } else {
         eliminatedArea.style.display = 'none';
         eliminatedArea.innerHTML = '';
       }
-      // 우승/무승부
-      const winnerArea = document.getElementById('winner-area');
-      const drawArea = document.getElementById('draw-area');
-      const alive = teams.filter(t => t.alive);
-      if (alive.length === 1 && state.started === false && teams.length > 0) {
-        winnerArea.style.display = '';
-        winnerArea.innerHTML = `🏆 <b>${alive[0].name}</b> 우승!`;
-        drawArea.style.display = 'none';
-      } else if (alive.length === 0 && state.started === false && teams.length > 0) {
-        drawArea.style.display = '';
-        drawArea.innerHTML = '😮 <b>무승부! 모두 탈락!</b>';
-        winnerArea.style.display = 'none';
-      } else {
-        winnerArea.style.display = 'none';
-        drawArea.style.display = 'none';
+      // 상태 안내
+      const allTeams = Object.entries(state.teams);
+      let statusText = '';
+      if (!state.started) {
+        statusText = '게임 대기중... (관리자가 시작하면 진행됩니다)';
+      } else if (allTeams.length > 0 && aliveTeams.length === 1) {
+        statusText = `🏆 <b>${aliveTeams[0][1].name}</b> 우승!`;
+      } else if (allTeams.length > 0 && aliveTeams.length === 0) {
+        statusText = '😮 <b>무승부! 모두 탈락!</b>';
       }
+      document.getElementById('status').innerHTML = statusText;
+      // 숫자 선택 버튼, 참가 입력 등은 표시하지 않음
+      const choiceArea = document.getElementById('choice-area');
+      choiceArea.innerHTML = '';
+      // 각 팀의 선택 현황 테이블 표시
+      if (allTeams.length > 0) {
+        let table = `<table style='width:100%;margin-top:1em;border-collapse:collapse;font-size:1.1em;'>`;
+        table += `<tr><th style='color:#ffeb3b;'>팀명</th><th>상태</th><th>선택 숫자</th></tr>`;
+        allTeams.forEach(([name, t]) => {
+          table += `<tr>`;
+          table += `<td style='${t.alive ? 'color:#fff;font-weight:bold;' : 'color:#ff5252;text-decoration:line-through;opacity:0.7;'}'>${name}</td>`;
+          table += `<td>${t.alive ? '생존' : '탈락'}</td>`;
+          table += `<td style='${t.choice !== null ? 'color:#43cea2;font-weight:bold;' : 'color:#aaa;font-style:italic;'}'>${t.choice !== null ? t.choice : '-'}</td>`;
+          table += `</tr>`;
+        });
+        table += `</table>`;
+        choiceArea.innerHTML = table;
+      }
+    }
+
+    // 긴장감 있는 탈락 모달
+    function showEliminationModal(lastEliminated) {
+      const modalBg = document.getElementById('modal-bg');
+      const modalContent = document.getElementById('modal-content');
+      let html = `<div style='font-size:1.2em; margin-bottom:0.7em;'>😱 <b>탈락 결과 발표!</b></div>`;
+      html += lastEliminated.eliminated.map(e =>
+        `<div style='margin:0.5em 0;'><span style='font-size:1.1em;'>숫자 <b style="color:#ffeb3b; font-size:1.3em;">${e.number}</b></span><br><span style='color:#ff5252; font-size:1.1em;'>${e.teams.join(', ')}</span> <span style='color:#ff5252;'>탈락</span></div>`
+      ).join('');
+      modalContent.innerHTML = html;
+      modalBg.style.display = 'flex';
+      modalBg.animate([
+        { opacity: 0 },
+        { opacity: 1 }
+      ], { duration: 300 });
+      setTimeout(() => {
+        modalBg.animate([
+          { opacity: 1 },
+          { opacity: 0 }
+        ], { duration: 400 });
+        setTimeout(() => { modalBg.style.display = 'none'; }, 400);
+      }, 2000);
+    }
+
+    // 긴장감 있는 우승 모달
+    function showWinnerModal(winner) {
+      const modalBg = document.getElementById('modal-bg');
+      const modalContent = document.getElementById('modal-content');
+      modalContent.innerHTML = `<div style='font-size:2em; margin-bottom:0.5em; color:#ffeb3b; text-shadow:2px 2px 8px #000;'>🏆</div><div style='font-size:1.3em;'><b>${winner}</b><br>우승!</div>`;
+      modalBg.style.display = 'flex';
+      modalBg.animate([
+        { opacity: 0 },
+        { opacity: 1 }
+      ], { duration: 300 });
+      setTimeout(() => {
+        modalBg.animate([
+          { opacity: 1 },
+          { opacity: 0 }
+        ], { duration: 600 });
+        setTimeout(() => { modalBg.style.display = 'none'; }, 600);
+      }, 2000);
+    }
+
+    // 일반 모달 (무승부 등)
+    function showModal(html, duration) {
+      const modalBg = document.getElementById('modal-bg');
+      const modalContent = document.getElementById('modal-content');
+      modalContent.innerHTML = html;
+      modalBg.style.display = 'flex';
+      modalBg.animate([
+        { opacity: 0 },
+        { opacity: 1 }
+      ], { duration: 300 });
+      setTimeout(() => {
+        modalBg.animate([
+          { opacity: 1 },
+          { opacity: 0 }
+        ], { duration: 400 });
+        setTimeout(() => { modalBg.style.display = 'none'; }, 400);
+      }, duration || 2000);
     }
   </script>
 </body>
